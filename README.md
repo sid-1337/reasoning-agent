@@ -1,24 +1,60 @@
-AI Reasoning Agent
+# Classical Logic Reasoning Agent
 
-Files
-- reasoning_agent.ipynb: Python implementation, experiments, metrics, and CSV submission writer.
+## Project Overview
 
-Requirements
-- Python 3.10 or later
-- Jupyter Notebook or JupyterLab
-- The `datasets` package only if downloading public Hugging Face datasets
+This project predicts whether a query follows from a knowledge base of facts and rules. It uses symbolic inference; a generative model does not make the final True/False decision.
 
-Run
-1. Open reasoning_agent.ipynb and run all cells from top to bottom.
-2. By default, public dataset downloads are disabled. To evaluate on public data, set LOAD_PUBLIC_DATASETS = True in the dataset section. Confirm the repository IDs and split names there match the Hugging Face dataset configurations available in your environment.
-3. The notebook reports accuracy only for successfully parsed examples with recognized labels. It also reports parser coverage and inference time. The built-in synthetic examples are smoke tests, not benchmark results.
+The implementation is deliberately split into data handling, language/formula parsing, and inference so the reasoning core can be inspected independently.
 
-Submission CSV
-Provide an evaluation CSV with an ID column, a context column, and a question/query/statement column. Then call:
+## Project Map
 
-generate_submission_from_csv("submission/evaluation_input.csv", "submission/submission.csv")
+| Path | Purpose |
+| --- | --- |
+| `submission/reasoning_agent.ipynb` | Dataset loading, parsing, experiments, metrics, traces, and submission CSV generation. |
+| `submission/logic_engine.py` | Core representation, unification, and forward chaining. |
+| `submission/folio_horn_adapter.py` | Strict adapter for the supported Horn subset of FOLIO's formal formulas. |
 
-The output contains ID and Label columns, with labels written as True or False. The writer stops if any row is unsupported, rather than silently omitting examples or writing partial predictions. No evaluation or private test file is opened automatically.
+## Run the Notebook
 
-Reasoning Scope
-The engine uses first-order term unification and forward chaining over signed Horn clauses. The text parser supports a limited controlled-English subset, including simple property facts, binary relations, conjunctions, explicit negated facts, and universally quantified If/then rules. It is not a complete first-order logic parser or theorem prover. Unsupported statements are reported; absence of a derivation is labeled False according to the benchmark's binary-label convention and does not establish logical negation under open-world semantics.
+Requirements: Python 3.10 or later, Jupyter, and network access to Hugging Face for dataset downloads. The notebook installs the `datasets` package in its active kernel. FOLIO access also requires accepting the dataset's access terms and authenticating with Hugging Face.
+
+1. Open `submission/reasoning_agent.ipynb`.
+2. Run the cells from top to bottom. Public dataset loading is enabled in the current notebook configuration.
+3. Review the printed schema, coverage, accuracy, inference time, and reasoning trace outputs.
+
+The notebook uses RuleTaker's `test` split, two CounterBench JSON files, and FOLIO's `validation` split. It does not open private evaluation data automatically.
+
+## Reasoning Method
+
+Facts are represented as signed atoms and rules as Horn clauses. The inference engine unifies rule variables with known facts and applies forward chaining until it reaches a fixed point. FOLIO records are first attempted through their formal logic fields; unsupported formulas fall back to the limited controlled-English parser.
+
+This is not a complete first-order theorem prover. Existential conjunctions and Horn implications are supported in the FOL adapter; disjunction, exclusive-or, nested quantifiers, and other unsupported formulas are reported rather than guessed.
+
+## Latest Public-Data Run
+
+Results below are from the latest recorded notebook run. Inference time includes parsing and reasoning for each loaded split; timing is environment-dependent.
+
+| Dataset and split | Rows | Supported | Coverage | Accuracy on supported labeled rows | Time |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| RuleTaker `test` | 250 | 250 | 100.00% | 97.60% | 0.238 s |
+| CounterBench | 1,200 | 0 | 0.00% | Not measured | 0.181 s |
+| FOLIO `validation` | 203 | 55 | 27.09% | 83.33% | 0.072 s |
+
+Coverage and accuracy are different. FOLIO accuracy is only for the supported subset with a recognized True/False label; it is not overall FOLIO accuracy. CounterBench uses intervention and counterfactual semantics that this Horn reasoner does not implement, so it currently reports no accuracy for that dataset.
+
+## Generate a Submission CSV
+
+Prepare an input CSV with an ID column, a context column, and a query column. Accepted names include `ID` or `id`, `context` or `premises`, and `question`, `query`, or `statement`. In the notebook, call:
+
+```python
+generate_submission_from_csv(
+	"submission/evaluation_input.csv",
+	"submission/submission.csv",
+)
+```
+
+The output columns are `ID` and `Label`, with labels written as `True` or `False`. Generation stops if an input row is unsupported, rather than silently writing an incomplete file. The submission CSV is not created until this function is explicitly called.
+
+## Interpreting False
+
+The benchmark uses binary labels, so a query that is not derived is returned as `False`. Under open-world logic, failure to derive a query is not proof of its negation. The report should distinguish this benchmark convention from classical entailment of a negative statement.

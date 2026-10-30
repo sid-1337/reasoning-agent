@@ -1,0 +1,78 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+\usepackage[final]{cvpr}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\title{A Classical Reasoning Agent for Logical Entailment}
+\author{Student Name\\AI Assignment}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We implement a symbolic system for deciding whether a query follows from facts and rules. The inference core represents signed atoms and Horn clauses, uses first-order unification, and applies forward chaining to a fixed point. Natural-language and formal-logic inputs are handled by bounded parsers; unsupported statements are reported rather than silently converted into negative predictions. On the loaded public splits, the system supports all 250 RuleTaker examples (97.6\% accuracy), 55 of 203 FOLIO examples (83.3\% accuracy on the supported, labeled subset), and none of the 1,200 CounterBench examples. These results emphasize the distinction between reasoning accuracy and input coverage.
+\end{abstract}
+
+\section{Introduction}
+The task is to determine whether a query is entailed by a knowledge base, not to predict its label with a generative model. Our design separates data loading, input parsing, and the classical reasoning engine. This makes the inference procedure inspectable and exposes a central limitation: a sound reasoner cannot compensate for a parser that does not represent the input's logic.
+
+\section{Representation and Inference}
+\subsection{Representation}
+A fact is a signed atom $P(t_1,\ldots,t_n)$, where terms are constants or variables. A rule is a conjunction of body atoms implying one head atom. For example,
+\begin{align*}
+\mathit{young}(x) &\rightarrow \mathit{smart}(x),\\
+\mathit{smart}(x) \land \mathit{kind}(x) &\rightarrow \mathit{successful}(x).
+\end{align*}
+RuleTaker's controlled-English forms are mapped to this representation. For FOLIO, the adapter uses the provided formal premise and conclusion columns when they fit the supported Horn fragment. Positive existential conjunctions are represented using fresh witness constants. Disjunction, exclusive-or, nested quantifiers, and other unsupported formulas are marked unsupported.
+
+\subsection{Classical Reasoning}
+The independent module \texttt{logic\_engine.py} implements unification and forward chaining. For each rule, unification matches its body against known ground facts and produces substitutions. The instantiated head is added to the knowledge base; iteration stops at a fixed point. Query entailment is checked by membership in the derived closure. The engine is deterministic and does not use a learned model to choose labels.
+
+\subsection{Reasoning Trace}
+Given facts $\mathit{young}(\text{Bob})$ and $\mathit{kind}(\text{Bob})$, the first rule yields $\mathit{smart}(\text{Bob})$. The second rule then yields $\mathit{successful}(\text{Bob})$. Thus the query ``Bob is successful'' is supported by a two-step derivation:
+\[
+\mathit{young}(\text{Bob})\Rightarrow\mathit{smart}(\text{Bob})\Rightarrow\mathit{successful}(\text{Bob}).
+\]
+
+\section{Experiments}
+We loaded the public RuleTaker test split (250 examples), two CounterBench JSON files (1,200 examples total), and FOLIO validation (203 examples). No private evaluation data was used. Accuracy is computed only for parsed examples with a recognizable binary gold label; coverage is the fraction of all loaded rows handled by the system. Inference time includes parsing and reasoning for each split and is environment-dependent.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Dataset & Rows & Supported & Coverage & Accuracy \\
+\midrule
+RuleTaker & 250 & 250 & 100.0\% & 97.6\% \\
+CounterBench & 1,200 & 0 & 0.0\% & -- \\
+FOLIO & 203 & 55 & 27.1\% & 83.3\% \\
+\bottomrule
+\end{tabular}
+\caption{Latest recorded public-split results. FOLIO accuracy is only on supported rows with binary labels, not the full split.}
+\label{tab:results}
+\end{table}
+
+The measured inference times were 0.238 seconds for RuleTaker, 0.181 seconds for CounterBench, and 0.072 seconds for FOLIO. These are single-run timings, not hardware-independent benchmarks. RuleTaker produced six incorrect predictions despite full parser coverage; a detailed error taxonomy was not part of this run.
+
+\section{Failure Analysis and Limitations}
+The main failure mode is coverage, not the cost of inference. The current text parser supports a bounded controlled-English subset. The FOLIO formal adapter handles only Horn implications, conjunctions, literals, and a restricted positive-existential case; the remaining formulas include operators and quantifier patterns outside that fragment. Its reported accuracy therefore describes a selected subset and should not be interpreted as overall FOLIO performance.
+
+CounterBench asks intervention and counterfactual questions (for example, whether an outcome would occur under an intervention). Ordinary Horn forward chaining models monotonic implication, not structural causal interventions, so the system correctly abstains on those examples. Extending CounterBench coverage would require a separate causal representation and inference procedure.
+
+For the benchmark's binary interface, an unproved query is returned as False. Under open-world semantics, failure to derive a proposition is not proof of its negation; this output convention must therefore be distinguished from complete classical entailment. Unsupported examples are excluded from accuracy and counted in coverage.
+
+\section{Conclusion}
+The implementation demonstrates classical unification and forward chaining with inspectable derivation traces. Public results show strong coverage on the loaded RuleTaker split, limited coverage on FOLIO, and a clear semantic mismatch with CounterBench. The next improvement should target representation coverage and explicit error analysis rather than adding search algorithms without addressing those input and logic boundaries.
+
+\begin{thebibliography}{3}
+\bibitem{ruletaker} RuleTaker dataset, Hugging Face. \url{https://huggingface.co/datasets/jise/ruletaker}
+\bibitem{counterbench} CounterBench dataset, Hugging Face. \url{https://huggingface.co/datasets/CounterBench/CounterBench}
+\bibitem{folio} FOLIO dataset, Hugging Face. \url{https://huggingface.co/datasets/yale-nlp/FOLIO}
+\end{thebibliography}
+
+\end{document}
