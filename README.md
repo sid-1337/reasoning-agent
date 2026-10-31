@@ -55,6 +55,21 @@ generate_submission_from_csv(
 
 The output columns are `ID` and `Label`, with labels written as `True` or `False`. Generation stops if an input row is unsupported, rather than silently writing an incomplete file. The submission CSV is not created until this function is explicitly called.
 
+## Dataset-Backed Export Included in This Repo
+
+This repository also includes a concrete export at `submission/submission.csv` that was generated from the actual public datasets loaded in the notebook (`RuleTaker`, `CounterBench`, and `FOLIO`). It is not synthetic or fabricated data. The file stores the original records alongside the model's prediction for each example.
+
+Current export schema:
+
+```csv
+dataset,id,context,question,answer,predicted_answer,status
+RuleTaker,0,"Facts:\nLiam volunteers...","The book volunteers.","False","False","ok"
+```
+
+`answer` preserves the original dataset label, `predicted_answer` records the reasoner output, and `status` records whether the row was supported by the parser/reasoner. The current export contains all loaded public rows: 250 RuleTaker + 1,200 CounterBench + 203 FOLIO = 1,653 rows.
+
+This export is useful for inspection and debugging because it lets you compare the source text, the gold answer, and the actual predicted answer side by side. If you need the benchmark-ready submission format with only `ID,Label`, use the `generate_submission_from_csv(...)` helper above on a CSV that contains eligible rows.
+
 ## Interpreting False
 
 The benchmark uses binary labels, so a query that is not derived is returned as `False`. Under open-world logic, failure to derive a query is not proof of its negation. The report should distinguish this benchmark convention from classical entailment of a negative statement.
