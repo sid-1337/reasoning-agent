@@ -1,1 +1,9 @@
-PRIVATE  TEST CASE  HERE ~  
+ID,context,query,label
+hard-001,"Ava is a student. If someone is a student, then they are a learner. If someone is a learner, then they are trained. If someone is trained, then they are qualified.",Ava is qualified.,True
+hard-002,"Ava is a student. If someone is a student, then they are a learner. If someone is a learner, then they are trained. If someone is trained, then they are qualified.",Ava is employed.,False
+hard-003,"Noah is patient. Noah is careful. If someone is patient and someone is careful, then they are reliable. If someone is reliable, then they are trusted.",Noah is trusted.,True
+hard-004,"Noah is patient. Noah is careful. If someone is patient and someone is careful, then they are reliable. If someone is reliable, then they are trusted.",Noah is famous.,False
+hard-005,"Mina is not tired. If someone is tired, then they are slow. If someone is slow, then they are late.",Mina is not tired.,True
+hard-006,"Mina is not tired. If someone is tired, then they are slow. If someone is slow, then they are late.",Mina is late.,False
+hard-007,"The key opens the vault. The key is metallic. If something opens the vault and something is metallic, then it is valuable. If something is valuable, then it is guarded.",The key is guarded.,True
+hard-008,"The key opens the vault. The key is metallic. If something opens the vault and something is metallic, then it is valuable. If something is valuable, then it is guarded.",The vault is guarded.,False
